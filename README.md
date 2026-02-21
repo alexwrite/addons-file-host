@@ -34,10 +34,12 @@
 ### ✅ Méthode automatique (recommandée)
 
 1. Connectez-vous à votre panel d'administration **ClientXCMS**
-2. Rendez-vous dans **Extensions → Marketplace**
-3. Recherchez **"Host Drive"**
-4. Cliquez sur **Installer**
-5. ✅ L'addon est actif — le menu **Corentin WebSite Addons → Hébergement de Fichiers** apparaît dans votre admin
+2. Rendez-vous dans **Extensions**
+3. Cliquez sur **Personnalisation**
+4. Recherchez **"file-host"** dans la liste des extensions disponibles
+5. Cliquez sur **Installer**
+6. ✅ L'addon est actif — le menu **Corentin WebSite Addons → Hébergement de Fichiers** apparaît dans votre admin
+
 
 ---
 
