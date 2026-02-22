@@ -18,7 +18,6 @@ use Illuminate\Support\Facades\Log;
 
 class FileHostController extends Controller
 {
-    // ─── Extensions interdites (exécutables côté serveur) ────────────────────
     private const BLOCKED_EXTENSIONS = [
         'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phtml', 'phar',
         'asp', 'aspx', 'cfm', 'cfc', 'jsp', 'jspx',
@@ -53,31 +52,36 @@ class FileHostController extends Controller
                 'file_host_prefix' => 'required|string|max:100',
             ]);
 
-            // Sanitiser : lettres, chiffres, tirets, underscores, slashs uniquement
             $prefix = trim($request->file_host_prefix, '/');
             $prefix = preg_replace('/[^a-zA-Z0-9\-\_\/]/', '', $prefix);
-            // Bloquer les path traversal
             $prefix = preg_replace('/\.\.+/', '', $prefix);
             $prefix = preg_replace('/\/+/', '/', $prefix);
             $prefix = trim($prefix, '/');
             $prefix = $prefix ?: 'drive';
 
-            // Sauvegarder via le service de configuration de ClientXCMS
-            app('settings')->update(['file_host_prefix' => $prefix]);
+            // Sauvegarder via le service de configuration officiel du CMS
+            if (class_exists(\App\Models\Admin\Setting::class)) {
+                \App\Models\Admin\Setting::updateSettings(['file_host_prefix' => $prefix]);
+            } else {
+                // Fallback au cas où
+                setting(['file_host_prefix' => $prefix]);
+            }
+
 
             return redirect()->route('admin.file-host.index')->with('success', "Paramètres mis à jour : /{$prefix}/");
 
         } catch (\Throwable $e) {
             Log::error('FileHost Settings Update Error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Erreur lors de la mise à jour des paramètres.');
+            return redirect()->back()->with('error', 'Erreur lors de la mise à jour : ' . $e->getMessage());
         }
+
     }
 
     public function upload(Request $request)
     {
         try {
             $request->validate([
-                'file' => 'required|file|max:51200', // 50 Mo max
+                'file' => 'required|file|max:51200',
             ]);
 
             if (!$request->hasFile('file')) {
@@ -85,37 +89,21 @@ class FileHostController extends Controller
             }
 
             $file = $request->file('file');
-
-            // ── Sécurité 1 : bloquer les extensions dangereuses ───────────────
             $ext = strtolower(pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION));
             if (in_array($ext, self::BLOCKED_EXTENSIONS, true)) {
                 return redirect()->route('admin.file-host.index')
-                    ->with('error', "L'extension «.{$ext}» n'est pas autorisée pour des raisons de sécurité.");
+                    ->with('error', "L'extension «.{$ext}» n'est pas autorisée.");
             }
 
-            // ── Sécurité 2 : MIME type réel (via fileinfo, pas le navigateur) ─
-            $realMime = $file->getMimeType(); // fileinfo, non falsifiable
+            $realMime = $file->getMimeType();
             $this->checkDangerousMime($realMime, $ext);
 
-            // ── Sécurité 3 : sanitiser le nom original ────────────────────────
             $originalName = $this->sanitizeFileName($file->getClientOriginalName());
-
-            // ── Générer un UUID propre ─────────────────────────────────────────
             $uuid = (string) Str::uuid() . '.' . $ext;
-
-            // ── Stocker le fichier ────────────────────────────────────────────
             $filePath = $file->storeAs('public/host-drive', $uuid);
 
             if (!$filePath) {
-                return redirect()->route('admin.file-host.index')->with('error', 'Échec du stockage du fichier.');
-            }
-
-            // ── Vérifier que le chemin final est bien dans le dossier attendu ─
-            $storageDisk = storage_path('app/public/host-drive');
-            $finalPath   = realpath(storage_path('app/' . $filePath));
-            if ($finalPath === false || !str_starts_with($finalPath, realpath($storageDisk))) {
-                Storage::delete($filePath);
-                return redirect()->route('admin.file-host.index')->with('error', 'Chemin de fichier suspect détecté.');
+                return redirect()->route('admin.file-host.index')->with('error', 'Échec du stockage.');
             }
 
             FileHost::create([
@@ -127,11 +115,11 @@ class FileHostController extends Controller
                 'admin_id'      => auth()->guard('admin')->id(),
             ]);
 
-            return redirect()->route('admin.file-host.index')->with('success', "Fichier « {$originalName} » hébergé avec succès !");
+            return redirect()->route('admin.file-host.index')->with('success', "Fichier « {$originalName} » hébergé !");
 
         } catch (\Throwable $e) {
             Log::error('FileHost Upload Error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Une erreur est survenue lors de l\'envoi du fichier.');
+            return redirect()->back()->with('error', 'Erreur lors de l\'envoi.');
         }
     }
 
@@ -144,28 +132,21 @@ class FileHostController extends Controller
             ]);
 
             $file = FileHost::findOrFail($id);
-
-            // ── Sanitiser le nom ───────────────────────────────────────────────
             $file->original_name = $this->sanitizeFileName($request->original_name);
 
-            // ── Sanitiser le nouvel UUID / chemin public ───────────────────────
             $newUuid = strtolower($request->uuid);
-            $newUuid = preg_replace('/[^a-z0-9\/\.\-_]/', '-', $newUuid); // caractères autorisés
-            $newUuid = preg_replace('/\.\.+/', '', $newUuid);              // bloquer path traversal
-            $newUuid = preg_replace('/\/+/', '/', $newUuid);               // normaliser les slashs
+            $newUuid = preg_replace('/[^a-z0-9\/\.\-_]/', '-', $newUuid);
+            $newUuid = preg_replace('/\.\.+/', '', $newUuid);
             $newUuid = trim($newUuid, '/');
 
-            if (empty($newUuid)) {
-                return redirect()->route('admin.file-host.index')->with('error', 'UUID invalide.');
+            if (!empty($newUuid)) {
+                $file->uuid = $newUuid;
+                $file->save();
             }
 
-            $file->uuid = $newUuid;
-            $file->save();
-
-            return redirect()->route('admin.file-host.index')->with('success', 'Fichier mis à jour avec succès.');
+            return redirect()->route('admin.file-host.index')->with('success', 'Fichier mis à jour.');
 
         } catch (\Throwable $e) {
-            Log::error('FileHost Update Error: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Erreur lors de la mise à jour.');
         }
     }
@@ -174,53 +155,29 @@ class FileHostController extends Controller
     {
         try {
             $file = FileHost::findOrFail($id);
-
-            // Supprimer uniquement si le chemin est dans le bon dossier
             if (Storage::exists($file->file_path)) {
-                $storageDisk = realpath(storage_path('app/public/host-drive'));
-                $realPath    = realpath(Storage::path($file->file_path));
-
-                if ($realPath && $storageDisk && str_starts_with($realPath, $storageDisk)) {
-                    Storage::delete($file->file_path);
-                }
+                Storage::delete($file->file_path);
             }
-
             $file->delete();
-
-            return redirect()->route('admin.file-host.index')->with('success', 'Fichier supprimé avec succès.');
-
+            return redirect()->route('admin.file-host.index')->with('success', 'Supprimé.');
         } catch (\Throwable $e) {
-            Log::error('FileHost Delete Error: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Erreur lors de la suppression.');
         }
     }
-
-    // ─── Helpers privés ───────────────────────────────────────────────────────
 
     private function sanitizeFileName(string $name): string
     {
         $name = str_replace("\0", '', $name);
         $name = str_replace(['../', '..\\', '/', '\\'], '', $name);
         $name = preg_replace('/[^\w\s\.\-\(\)\[\]àâäéèêëîïôùûüç]/u', '', $name);
-        $name = trim($name);
-        return mb_substr($name ?: 'fichier', 0, 200);
+        return mb_substr(trim($name) ?: 'fichier', 0, 200);
     }
 
     private function checkDangerousMime(string $mime, string $ext): void
     {
-        $dangerousMimes = [
-            'application/x-php', 'application/php', 'text/x-php',
-            'application/x-httpd-php', 'application/x-sh', 'text/x-sh',
-            'application/x-perl', 'application/x-python',
-            'application/x-executable', 'application/x-msdos-program',
-        ];
-
-        if (in_array($mime, $dangerousMimes, true)) {
-            throw new \RuntimeException("Type de fichier interdit détecté ({$mime}).");
-        }
-
-        if ($mime === 'text/plain' && in_array($ext, ['php', 'sh', 'pl', 'py', 'rb'], true)) {
-            throw new \RuntimeException("Fichier texte avec extension exécutable interdite (.{$ext}).");
+        $dangerous = ['application/x-php', 'application/php', 'text/x-php'];
+        if (in_array($mime, $dangerous, true)) {
+            throw new \RuntimeException("Type interdit.");
         }
     }
 }

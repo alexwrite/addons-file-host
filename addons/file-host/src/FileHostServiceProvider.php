@@ -26,9 +26,14 @@ class FileHostServiceProvider extends BaseAddonServiceProvider
             return $this;
         });
 
-        // Enregistrer le middleware de bypass de maintenance tout en haut de la pile "web"
-        // Cela permet de servir les fichiers même si le middleware de maintenance Laravel bloque le reste.
-        $this->app['router']->prependMiddlewareToGroup('web', FileHostMaintenanceBypass::class);
+        // Enregistrer le middleware GLOBALEMENT en haut de la pile.
+        // C'est l'unique moyen de bypasser le mode maintenance de Laravel sans toucher au .htaccess.
+        if ($this->app->bound(\Illuminate\Contracts\Http\Kernel::class) && !app()->bound('file_host_middleware_registered')) {
+            $this->app->make(\Illuminate\Contracts\Http\Kernel::class)
+                ->prependMiddleware(FileHostMaintenanceBypass::class);
+            
+            app()->instance('file_host_middleware_registered', true);
+        }
     }
 
     public function boot()
@@ -73,7 +78,6 @@ class FileHostServiceProvider extends BaseAddonServiceProvider
         try {
             $settings = $this->app->make('settings');
 
-            // Créer la carte parente UNE SEULE FOIS par requête (partagé entre addons).
             if (!app()->bound('corentin_website_card_registered')) {
                 $settings->addCard(
                     'corentin-website',

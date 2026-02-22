@@ -14,50 +14,47 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
-/**
- * Ce middleware s'exécute EN PREMIER dans le pipeline HTTP (prepend).
- * Si l'URL correspond à une URL de fichier hébergé ET que le site est
- * en mode maintenance, il sert le fichier DIRECTEMENT sans appeler
- * $next() — ce qui empêche le middleware de maintenance Laravel de bloquer.
- */
 class FileHostMaintenanceBypass
 {
+    /**
+     * Cache statique pour éviter de charger le préfixe 30 fois par page.
+     */
+    private static ?string $cachedPrefix = null;
+
     public function handle(Request $request, Closure $next)
     {
-        // Passer immédiatement si le site n'est pas en maintenance
-        if (!app()->isDownForMaintenance()) {
+        // 1. Récupérer le préfixe (une seule fois par cycle de vie de l'objet ou via cache statique)
+        if (self::$cachedPrefix === null) {
+            try {
+                self::$cachedPrefix = setting('file_host_prefix', 'drive') ?: 'drive';
+            } catch (\Throwable $e) {
+                self::$cachedPrefix = 'drive';
+            }
+        }
+
+        // 2. Vérifier si l'URL commence par notre préfixe
+        $path = ltrim($request->getPathInfo(), '/');
+        if (!str_starts_with($path, self::$cachedPrefix . '/')) {
             return $next($request);
         }
 
-        // ── Lire le préfixe configuré via le service standard ────────────────
-        $prefix = setting('file_host_prefix', 'drive');
-
-        // ── Vérifier si l'URL correspond au préfixe du FileHost ──────────────
-        $path        = ltrim($request->getPathInfo(), '/');
-        $prefixClean = ltrim($prefix, '/');
-
-        if (!str_starts_with($path, $prefixClean . '/')) {
-            return $next($request); // Pas notre URL → maintenance normale
-        }
-
-        // ── Extraire l'UUID ───────────────────────────────────────────────────
-        $uuid = substr($path, strlen($prefixClean) + 1);
-
-        // Sécurité : bloquer path traversal et null bytes
+        // 3. Si on est ici, c'est une URL FileHost. 
+        // On intercepte et on sert le fichier DIRECTEMENT pour bypasser Laravel Maintenance.
+        
+        $uuid = substr($path, strlen(self::$cachedPrefix) + 1);
         $uuid = str_replace("\0", '', $uuid);
+        
         if (empty($uuid) || str_contains($uuid, '..')) {
-            return response('Requête invalide.', 400);
+            return $next($request);
         }
 
-        // ── Servir le fichier directement (sans pipeline maintenance) ─────────
         try {
             $file = FileHost::where('uuid', $uuid)->first();
 
             if (!$file || !Storage::exists($file->file_path)) {
-                return response('Fichier non trouvé.', 404);
+                return $next($request);
             }
 
-            // Path traversal check
             $storagePath = realpath(storage_path('app'));
             $filePath    = Storage::path($file->file_path);
             $realPath    = realpath($filePath);
@@ -66,15 +63,13 @@ class FileHostMaintenanceBypass
                 return response('Accès refusé.', 403);
             }
 
-            // MIME forcé pour les types dangereux (prévention XSS)
             $mimeType    = $file->mime_type ?? 'application/octet-stream';
             $disposition = 'inline';
-            if (in_array($mimeType, ['text/html', 'image/svg+xml', 'text/xml'], true)) {
+            if (in_array($mimeType, ['text/html', 'image/svg+xml', 'text/xml', 'application/xml', 'application/xhtml+xml'], true)) {
                 $disposition = 'attachment';
                 $mimeType    = 'application/octet-stream';
             }
 
-            // Sanitiser le nom pour le header (prévention injection CRLF)
             $safeName = preg_replace('/[\x00-\x1F\x7F"\\\\]/', '', $file->original_name);
             $safeName = mb_substr(trim($safeName) ?: 'fichier', 0, 255);
 
@@ -85,12 +80,11 @@ class FileHostMaintenanceBypass
                 'Content-Disposition'    => $disposition . '; filename="' . $safeName . '"',
                 'X-Content-Type-Options' => 'nosniff',
                 'X-Frame-Options'        => 'SAMEORIGIN',
-                'Referrer-Policy'        => 'no-referrer',
                 'Cache-Control'          => 'private, max-age=3600',
             ]);
 
         } catch (\Throwable $e) {
-            return response('Erreur lors du chargement du fichier.', 500);
+            return $next($request);
         }
     }
 }
