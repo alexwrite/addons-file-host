@@ -9,28 +9,14 @@
 
 use App\Addons\FileHost\Http\Controllers\FileHostPublicController;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
 
-// Lire le préfixe depuis la table de configuration de l'addon
-$prefix = 'drive';
-try {
-    if (Schema::hasTable('file_host_config')) {
-        $row = DB::table('file_host_config')->where('key', 'prefix')->first();
-        if ($row && !empty($row->value)) {
-            $prefix = $row->value;
-        }
-    }
-} catch (\Exception $e) {
-    // Silencieux : fallback sur 'drive'
-}
+// Lire le préfixe depuis le service de configuration standard de ClientXCMS
+$prefix = setting('file_host_prefix', 'drive');
 
 Route::get('/' . $prefix . '/{uuid}', [FileHostPublicController::class, 'download'])
     ->name('file-host.download')
-    ->where('uuid', '.*')
+    ->where('uuid', '[a-zA-Z0-9\/\.\-_]+') // Restriction pour éviter les caractères spéciaux dangereux
     ->withoutMiddleware([
-        // Ignorer le mode maintenance Laravel (site en maintenance = fichiers toujours accessibles)
+        // Permet l'accès même si le mode maintenance est activé via Blade/Laravel
         \Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance::class,
     ]);
-
-

@@ -9,13 +9,12 @@
 
 namespace App\Addons\FileHost;
 
+use App\Addons\FileHost\Http\Middleware\FileHostMaintenanceBypass;
 use App\Extensions\BaseAddonServiceProvider;
 use App\Models\Admin\Permission;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Schema;
 
 class FileHostServiceProvider extends BaseAddonServiceProvider
 {
@@ -26,6 +25,10 @@ class FileHostServiceProvider extends BaseAddonServiceProvider
         $this->app->singleton('file-host', function ($app) {
             return $this;
         });
+
+        // Enregistrer le middleware de bypass de maintenance tout en haut de la pile "web"
+        // Cela permet de servir les fichiers même si le middleware de maintenance Laravel bloque le reste.
+        $this->app['router']->prependMiddlewareToGroup('web', FileHostMaintenanceBypass::class);
     }
 
     public function boot()
@@ -63,31 +66,6 @@ class FileHostServiceProvider extends BaseAddonServiceProvider
         }
 
         $this->registerSettingsItems();
-        $this->initializeSettings();
-        $this->autoInstallIfNeeded();
-        $this->bypassMaintenanceMode();
-    }
-
-    /**
-     * Installe / met à jour le bypass de maintenance via le helper dédié.
-     */
-    protected function bypassMaintenanceMode(): void
-    {
-        \App\Addons\FileHost\FileHostBypassHelper::install();
-    }
-
-    protected function initializeSettings(): void
-    {
-        try {
-            if (Schema::hasTable('file_host_config')) {
-                DB::table('file_host_config')->insertOrIgnore([
-                    'key'        => 'prefix',
-                    'value'      => 'drive',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
-        } catch (\Exception $e) {}
     }
 
     protected function registerSettingsItems(): void
@@ -95,17 +73,15 @@ class FileHostServiceProvider extends BaseAddonServiceProvider
         try {
             $settings = $this->app->make('settings');
 
-            // Créer la carte parente UNE SEULE FOIS par requête.
-            // Utilise $GLOBALS pour être indépendant de tout addon tiers.
-            // N'importe quel futur addon peut copier ce même pattern sans rien modifier.
-            if (empty($GLOBALS['corentin_website_card_registered'])) {
+            // Créer la carte parente UNE SEULE FOIS par requête (partagé entre addons).
+            if (!app()->bound('corentin_website_card_registered')) {
                 $settings->addCard(
                     'corentin-website',
                     'Corentin WebSite Addons',
                     'Gérer les extensions et automatisations Corentin WebSite.',
                     55
                 );
-                $GLOBALS['corentin_website_card_registered'] = true;
+                app()->instance('corentin_website_card_registered', true);
             }
 
             $settings->addCardItem(
@@ -120,60 +96,6 @@ class FileHostServiceProvider extends BaseAddonServiceProvider
 
         } catch (\Exception $e) {
             Log::error("FileHost: Erreur menu: {$e->getMessage()}");
-        }
-    }
-
-    protected function autoInstallIfNeeded(): void
-    {
-        try {
-            // 1. Créer la table principale si elle n'existe pas
-            if (!Schema::hasTable('file_hosts')) {
-                Schema::create('file_hosts', function (\Illuminate\Database\Schema\Blueprint $table) {
-                    $table->id();
-                    $table->string('uuid', 255)->unique();
-                    $table->string('original_name');
-                    $table->string('file_path');
-                    $table->string('mime_type')->nullable();
-                    $table->unsignedBigInteger('file_size')->default(0);
-                    $table->unsignedBigInteger('admin_id')->nullable();
-                    $table->unsignedBigInteger('views')->default(0);
-                    $table->timestamps();
-                });
-            } else {
-                // 2. Corriger la colonne uuid si elle est encore trop courte (36 chars)
-                try {
-                    $colInfo = DB::select("SHOW COLUMNS FROM `file_hosts` LIKE 'uuid'");
-                    if (!empty($colInfo)) {
-                        $colType = strtolower($colInfo[0]->Type ?? '');
-                        if (str_contains($colType, '36') || $colType === 'char(36)') {
-                            DB::statement('ALTER TABLE `file_hosts` MODIFY `uuid` VARCHAR(255) NOT NULL');
-                            Log::info('FileHost: colonne uuid agrandie à VARCHAR(255).');
-                        }
-                    }
-                } catch (\Exception $e) {
-                    Log::error('FileHost: impossible de vérifier la colonne uuid: ' . $e->getMessage());
-                }
-            }
-
-            // 3. Créer la table de configuration si elle n'existe pas
-            if (!Schema::hasTable('file_host_config')) {
-                Schema::create('file_host_config', function (\Illuminate\Database\Schema\Blueprint $table) {
-                    $table->string('key')->primary();
-                    $table->text('value')->nullable();
-                    $table->timestamps();
-                });
-            }
-
-            // 4. S'assurer que la valeur par défaut du préfixe existe
-            DB::table('file_host_config')->insertOrIgnore([
-                'key'        => 'prefix',
-                'value'      => 'drive',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('FileHost: Erreur auto-install: ' . $e->getMessage());
         }
     }
 }

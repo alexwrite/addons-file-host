@@ -3,7 +3,7 @@
     "description": "Module d'hébergement de fichiers pour ClientXCMS.",
     "type": "clientxcms-addon",
     "license": "Proprietary",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "authors": [
         {
             "name": "Corentin WebSite",

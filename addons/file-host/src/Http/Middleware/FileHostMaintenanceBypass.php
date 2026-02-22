@@ -12,15 +12,13 @@ namespace App\Addons\FileHost\Http\Middleware;
 use App\Addons\FileHost\Models\FileHost;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 /**
  * Ce middleware s'exécute EN PREMIER dans le pipeline HTTP (prepend).
  * Si l'URL correspond à une URL de fichier hébergé ET que le site est
  * en mode maintenance, il sert le fichier DIRECTEMENT sans appeler
- * $next() — ce qui empêche tout middleware de maintenance de bloquer.
+ * $next() — ce qui empêche le middleware de maintenance Laravel de bloquer.
  */
 class FileHostMaintenanceBypass
 {
@@ -31,18 +29,8 @@ class FileHostMaintenanceBypass
             return $next($request);
         }
 
-        // ── Lire le préfixe configuré ─────────────────────────────────────────
-        $prefix = 'drive';
-        try {
-            if (Schema::hasTable('file_host_config')) {
-                $row = DB::table('file_host_config')->where('key', 'prefix')->first();
-                if ($row && !empty($row->value)) {
-                    $prefix = trim($row->value, '/');
-                }
-            }
-        } catch (\Throwable $e) {
-            // fallback sur 'drive'
-        }
+        // ── Lire le préfixe configuré via le service standard ────────────────
+        $prefix = setting('file_host_prefix', 'drive');
 
         // ── Vérifier si l'URL correspond au préfixe du FileHost ──────────────
         $path        = ltrim($request->getPathInfo(), '/');
@@ -78,7 +66,7 @@ class FileHostMaintenanceBypass
                 return response('Accès refusé.', 403);
             }
 
-            // MIME forcé pour les types dangereux
+            // MIME forcé pour les types dangereux (prévention XSS)
             $mimeType    = $file->mime_type ?? 'application/octet-stream';
             $disposition = 'inline';
             if (in_array($mimeType, ['text/html', 'image/svg+xml', 'text/xml'], true)) {
@@ -86,7 +74,7 @@ class FileHostMaintenanceBypass
                 $mimeType    = 'application/octet-stream';
             }
 
-            // Sanitiser le nom pour le header
+            // Sanitiser le nom pour le header (prévention injection CRLF)
             $safeName = preg_replace('/[\x00-\x1F\x7F"\\\\]/', '', $file->original_name);
             $safeName = mb_substr(trim($safeName) ?: 'fichier', 0, 255);
 

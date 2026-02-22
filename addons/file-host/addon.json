@@ -2,7 +2,7 @@
     "name": "Host Drive",
     "description": "Module d'hébergement de fichiers (images, pdf, etc.) pour ClientXCMS.",
     "uuid": "file-host",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "author": {
         "name": "Corentin WebSite",
         "email": "hello@corentin.site"

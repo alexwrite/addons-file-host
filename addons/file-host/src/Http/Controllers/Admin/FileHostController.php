@@ -14,6 +14,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class FileHostController extends Controller
 {
@@ -28,89 +29,11 @@ class FileHostController extends Controller
         'cgi', 'shtml', 'xhtml',
     ];
 
-    /**
-     * Affiche une page de débogage lisible en cas d'erreur fatale.
-     * IMPORTANT : uniquement accessible aux admins (route middlewarisée).
-     */
-    private function debugPage(\Throwable $e, string $action = ''): \Illuminate\Http\Response
-    {
-        $title  = htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
-        $file   = htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8');
-        $line   = (int) $e->getLine();
-        $trace  = htmlspecialchars($e->getTraceAsString(), ENT_QUOTES, 'UTF-8');
-        $action = htmlspecialchars($action, ENT_QUOTES, 'UTF-8');
-
-        $html = <<<HTML
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>FileHost — Erreur de débogage</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 2rem; }
-        .card { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; padding: 2rem; max-width: 960px; margin: 0 auto; }
-        .badge { display: inline-flex; align-items: center; gap: .4rem; padding: .3rem .8rem; border-radius: 9999px; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 1.5rem; }
-        .badge-error { background: rgba(244,63,94,.15); color: #f43f5e; border: 1px solid rgba(244,63,94,.3); }
-        h1 { font-size: 1.4rem; font-weight: 800; color: #f8fafc; line-height: 1.4; margin-bottom: 1.5rem; word-break: break-word; }
-        .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
-        .meta-item { background: #0f172a; border: 1px solid #334155; border-radius: .75rem; padding: 1rem; }
-        .meta-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #64748b; margin-bottom: .35rem; }
-        .meta-value { font-size: .875rem; color: #94a3b8; word-break: break-all; }
-        .meta-value code { color: #f59e0b; font-family: 'Consolas', monospace; }
-        .trace-title { font-size: .75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: .75rem; }
-        pre { background: #0f172a; border: 1px solid #334155; border-radius: .75rem; padding: 1.25rem; overflow-x: auto; font-size: .72rem; line-height: 1.7; color: #94a3b8; font-family: 'Consolas', monospace; white-space: pre-wrap; word-break: break-all; max-height: 350px; overflow-y: auto; }
-        .back { display: inline-flex; align-items: center; gap: .5rem; margin-bottom: 1.5rem; background: #334155; color: #e2e8f0; border: none; border-radius: .875rem; padding: .5rem 1rem; font-size: .875rem; font-weight: 600; cursor: pointer; text-decoration: none; }
-        .back:hover { background: #475569; }
-        hr { border: none; border-top: 1px solid #334155; margin: 1.5rem 0; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <a class="back" href="javascript:history.back()">← Retour</a>
-        <div class="badge badge-error">⚠ FileHost — Erreur fatale{$action}</div>
-        <h1>{$title}</h1>
-        <div class="meta">
-            <div class="meta-item">
-                <div class="meta-label">Fichier source</div>
-                <div class="meta-value"><code>{$file}</code></div>
-            </div>
-            <div class="meta-item">
-                <div class="meta-label">Ligne</div>
-                <div class="meta-value"><code>{$line}</code></div>
-            </div>
-        </div>
-        <hr>
-        <div class="trace-title">Stack trace complet</div>
-        <pre>{$trace}</pre>
-    </div>
-</body>
-</html>
-HTML;
-
-        return response($html, 500)->header('Content-Type', 'text/html');
-    }
-
     public function index()
     {
         try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('file_hosts')) {
-                $files = FileHost::orderBy('created_at', 'desc')->paginate(15);
-            } else {
-                $files = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15, 1, [
-                    'path' => request()->url(),
-                ]);
-            }
-
-            $prefix = 'drive';
-            try {
-                if (\Illuminate\Support\Facades\Schema::hasTable('file_host_config')) {
-                    $row = \Illuminate\Support\Facades\DB::table('file_host_config')->where('key', 'prefix')->first();
-                    if ($row) {
-                        $prefix = $row->value;
-                    }
-                }
-            } catch (\Exception $e) {}
+            $files = FileHost::orderBy('created_at', 'desc')->paginate(15);
+            $prefix = setting('file_host_prefix', 'drive');
 
             return view('file-host::admin.index', [
                 'files'  => $files,
@@ -118,7 +41,8 @@ HTML;
             ]);
 
         } catch (\Throwable $e) {
-            return $this->debugPage($e, ' · index()');
+            Log::error('FileHost Index Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Une erreur est survenue lors du chargement de la liste.');
         }
     }
 
@@ -138,25 +62,14 @@ HTML;
             $prefix = trim($prefix, '/');
             $prefix = $prefix ?: 'drive';
 
-            if (!$this->ensureConfigTable()) {
-                return redirect()->route('admin.file-host.index')->with('error', 'Erreur lors de la mise à jour du préfixe.');
-            }
+            // Sauvegarder via le service de configuration de ClientXCMS
+            app('settings')->update(['file_host_prefix' => $prefix]);
 
-            \Illuminate\Support\Facades\DB::table('file_host_config')->where('key', 'prefix')->delete();
-            \Illuminate\Support\Facades\DB::table('file_host_config')->insert([
-                'key'        => 'prefix',
-                'value'      => $prefix,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            // Mettre à jour le .htaccess immédiatement avec le nouveau préfixe
-            \App\Addons\FileHost\FileHostBypassHelper::install($prefix);
-
-            return redirect()->route('admin.file-host.index')->with('success', "Préfixe mis à jour : /{$prefix}/ — Actualisez la page pour voir les nouveaux liens.");
+            return redirect()->route('admin.file-host.index')->with('success', "Paramètres mis à jour : /{$prefix}/");
 
         } catch (\Throwable $e) {
-            return $this->debugPage($e, ' · updateSettings()');
+            Log::error('FileHost Settings Update Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Erreur lors de la mise à jour des paramètres.');
         }
     }
 
@@ -217,7 +130,8 @@ HTML;
             return redirect()->route('admin.file-host.index')->with('success', "Fichier « {$originalName} » hébergé avec succès !");
 
         } catch (\Throwable $e) {
-            return $this->debugPage($e, ' · upload()');
+            Log::error('FileHost Upload Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Une erreur est survenue lors de l\'envoi du fichier.');
         }
     }
 
@@ -251,7 +165,8 @@ HTML;
             return redirect()->route('admin.file-host.index')->with('success', 'Fichier mis à jour avec succès.');
 
         } catch (\Throwable $e) {
-            return $this->debugPage($e, ' · update(id=' . (int)$id . ')');
+            Log::error('FileHost Update Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Erreur lors de la mise à jour.');
         }
     }
 
@@ -275,33 +190,22 @@ HTML;
             return redirect()->route('admin.file-host.index')->with('success', 'Fichier supprimé avec succès.');
 
         } catch (\Throwable $e) {
-            return $this->debugPage($e, ' · destroy(id=' . (int)$id . ')');
+            Log::error('FileHost Delete Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Erreur lors de la suppression.');
         }
     }
 
     // ─── Helpers privés ───────────────────────────────────────────────────────
 
-    /**
-     * Sanitise un nom de fichier : supprime les caractères dangereux,
-     * les path traversal, les null bytes et coupe à 200 caractères.
-     */
     private function sanitizeFileName(string $name): string
     {
-        // Supprimer les null bytes
         $name = str_replace("\0", '', $name);
-        // Supprimer les path traversal
         $name = str_replace(['../', '..\\', '/', '\\'], '', $name);
-        // Ne garder que les caractères sûrs
         $name = preg_replace('/[^\w\s\.\-\(\)\[\]àâäéèêëîïôùûüç]/u', '', $name);
         $name = trim($name);
-        // Limiter la longueur
         return mb_substr($name ?: 'fichier', 0, 200);
     }
 
-    /**
-     * Vérifie que le MIME type réel n'est pas dangereux.
-     * Lance une exception si le fichier est suspect.
-     */
     private function checkDangerousMime(string $mime, string $ext): void
     {
         $dangerousMimes = [
@@ -315,28 +219,8 @@ HTML;
             throw new \RuntimeException("Type de fichier interdit détecté ({$mime}).");
         }
 
-        // Double-vérification : MIME "text/plain" pour des extensions exécutables
         if ($mime === 'text/plain' && in_array($ext, ['php', 'sh', 'pl', 'py', 'rb'], true)) {
             throw new \RuntimeException("Fichier texte avec extension exécutable interdite (.{$ext}).");
-        }
-    }
-
-    /**
-     * S'assure que la table de configuration existe.
-     */
-    private function ensureConfigTable(): bool
-    {
-        try {
-            if (!\Illuminate\Support\Facades\Schema::hasTable('file_host_config')) {
-                \Illuminate\Support\Facades\Schema::create('file_host_config', function (\Illuminate\Database\Schema\Blueprint $table) {
-                    $table->string('key')->primary();
-                    $table->text('value')->nullable();
-                    $table->timestamps();
-                });
-            }
-            return true;
-        } catch (\Throwable $e) {
-            return false;
         }
     }
 }

@@ -19,26 +19,11 @@ return new class extends Migration
             $table->unsignedBigInteger('views')->default(0);
             $table->timestamps();
         });
-
-        // Table de configuration de l'addon
-        Schema::create('file_host_config', function (Blueprint $table) {
-            $table->string('key')->primary();
-            $table->text('value')->nullable();
-            $table->timestamps();
-        });
-
-        // Valeur par défaut du préfixe
-        \Illuminate\Support\Facades\DB::table('file_host_config')->insert([
-            'key'        => 'prefix',
-            'value'      => 'drive',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
     }
 
     public function down()
     {
-        Schema::dropIfExists('file_host_config');
         Schema::dropIfExists('file_hosts');
     }
 };
+
