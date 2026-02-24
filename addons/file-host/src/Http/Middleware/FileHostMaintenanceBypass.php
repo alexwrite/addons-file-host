@@ -38,50 +38,17 @@ class FileHostMaintenanceBypass
         }
 
         $uuid = substr($path, strlen(self::$cachedPrefix) + 1);
-        $uuid = str_replace("\0", '', $uuid);
         
-        if (empty($uuid) || str_contains($uuid, '..')) {
-            return $next($request);
-        }
-
         try {
-            $file = FileHost::where('uuid', $uuid)->first();
+            $response = FileHost::serve($uuid);
 
-            if (!$file || !Storage::exists($file->file_path)) {
-                return $next($request);
+            if ($response !== null) {
+                return $response;
             }
-
-            $storagePath = realpath(storage_path('app'));
-            $filePath    = Storage::path($file->file_path);
-            $realPath    = realpath($filePath);
-
-            if ($realPath === false || !str_starts_with($realPath, $storagePath . DIRECTORY_SEPARATOR)) {
-                return response(__('file-host::messages.access_denied'), 403);
-            }
-
-            $mimeType    = $file->mime_type ?? 'application/octet-stream';
-            $disposition = 'inline';
-            if (in_array($mimeType, FileHost::DOWNLOAD_ONLY_MIMES, true)) {
-                $disposition = 'attachment';
-                $mimeType    = 'application/octet-stream';
-            }
-
-            $safeName = preg_replace('/[\x00-\x1F\x7F\"\\\]/', '', $file->original_name);
-            $safeName = mb_substr(trim($safeName) ?: 'fichier', 0, 255);
-
-            $file->increment('views');
-
-            return response()->file($realPath, [
-                'Content-Type'           => $mimeType,
-                'Content-Disposition'    => $disposition . '; filename="' . addslashes($safeName) . '"; filename*=UTF-8\'\'' . rawurlencode($safeName),
-                'X-Content-Type-Options' => 'nosniff',
-                'X-Frame-Options'        => 'SAMEORIGIN',
-                'Cache-Control'          => 'private, max-age=3600',
-            ]);
-
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('FileHost bypass error: ' . $e->getMessage());
-            return $next($request);
         }
+
+        return $next($request);
     }
 }

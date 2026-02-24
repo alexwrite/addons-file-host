@@ -15,6 +15,7 @@ namespace App\Addons\FileHost\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class FileHost extends Model
 {
@@ -35,6 +36,80 @@ class FileHost extends Model
         'htaccess', 'htpasswd', 'ini', 'env',
         'cgi', 'shtml', 'xhtml',
     ];
+
+    /**
+     * Logique centralisée pour servir un fichier avec contrôles de sécurité.
+     * Évite la duplication entre Middleware et Contrôleurs.
+     * 
+     * @param string $uuid
+     * @return \Symfony\Component\HttpFoundation\Response|null
+     */
+    public static function serve(string $uuid)
+    {
+        $uuid = str_replace("\0", '', $uuid);
+        if (empty($uuid) || str_contains($uuid, '..')) {
+            return null;
+        }
+
+        $file = self::where('uuid', $uuid)->first();
+        if (!$file) {
+            return null;
+        }
+
+        // Sécurité supplémentaire : Vérifier l'extension
+        $ext = strtolower(pathinfo($file->file_path, PATHINFO_EXTENSION));
+        if (in_array($ext, self::BLOCKED_EXTENSIONS, true)) {
+            \Illuminate\Support\Facades\Log::warning("FileHost: Tentative d'accès à une extension interdite ($ext) pour UUID {$uuid}");
+            return response(__('file-host::messages.access_denied'), 403);
+        }
+
+        if (!Storage::exists($file->file_path)) {
+            \Illuminate\Support\Facades\Log::error("FileHost: Fichier manquant sur le disque pour UUID {$uuid}: {$file->file_path}");
+            return null;
+        }
+
+        $storagePath = realpath(storage_path('app'));
+        $filePath    = Storage::path($file->file_path);
+        $realPath    = realpath($filePath);
+
+        // Sécurité : Empêcher le path traversal si le fichier est hors du storage
+        if ($realPath === false || !str_starts_with($realPath, $storagePath . DIRECTORY_SEPARATOR)) {
+            return response(__('file-host::messages.access_denied'), 403);
+        }
+
+        $file->increment('views');
+
+        $mimeType = $file->mime_type ?? 'application/octet-stream';
+        $disposition = 'inline';
+        if (in_array($mimeType, self::DOWNLOAD_ONLY_MIMES, true)) {
+            $disposition = 'attachment';
+            $mimeType    = 'application/octet-stream';
+        }
+
+        $safeName = preg_replace('/[\x00-\x1F\x7F"\\\\]/', '', $file->original_name);
+        $safeName = mb_substr(trim($safeName) ?: 'fichier', 0, 255);
+
+        return response()->file($realPath, [
+            'Content-Type'           => $mimeType,
+            'Content-Disposition'    => $disposition . '; filename="' . addslashes($safeName) . '"; filename*=UTF-8\'\'' . rawurlencode($safeName),
+            'X-Content-Type-Options' => 'nosniff',
+            'X-Frame-Options'        => 'SAMEORIGIN',
+            'X-Robots-Tag'           => 'noindex, nofollow',
+            'Cache-Control'          => 'private, max-age=3600',
+        ]);
+    }
+
+    /**
+     * Récupère le préfixe de l'URL avec fallback.
+     */
+    public static function getPrefix(): string
+    {
+        try {
+            return setting('file_host_prefix', 'drive') ?: 'drive';
+        } catch (\Throwable) {
+            return 'drive';
+        }
+    }
 
     protected $table = 'file_hosts';
 
