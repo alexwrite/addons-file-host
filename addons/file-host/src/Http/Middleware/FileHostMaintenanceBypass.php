@@ -73,13 +73,14 @@ class FileHostMaintenanceBypass
 
             return response()->file($realPath, [
                 'Content-Type'           => $mimeType,
-                'Content-Disposition'    => $disposition . '; filename="' . addslashes($safeName) . '"',
+                'Content-Disposition'    => $disposition . '; filename="' . addslashes($safeName) . '"; filename*=UTF-8\'\'' . rawurlencode($safeName),
                 'X-Content-Type-Options' => 'nosniff',
                 'X-Frame-Options'        => 'SAMEORIGIN',
                 'Cache-Control'          => 'private, max-age=3600',
             ]);
 
         } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('FileHost bypass error: ' . $e->getMessage());
             return $next($request);
         }
     }

@@ -44,7 +44,7 @@ class FileHostPublicController extends Controller
 
         $mimeType = $file->mime_type ?? 'application/octet-stream';
         $disposition = 'inline';
-        if (in_array($mimeType, ['text/html', 'image/svg+xml', 'text/xml', 'application/xml', 'application/xhtml+xml'], true)) {
+        if (in_array($mimeType, FileHost::DOWNLOAD_ONLY_MIMES, true)) {
             $disposition = 'attachment';
             $mimeType    = 'application/octet-stream';
         }
@@ -54,7 +54,7 @@ class FileHostPublicController extends Controller
 
         return response()->file($realPath, [
             'Content-Type'           => $mimeType,
-            'Content-Disposition'    => $disposition . '; filename="' . addslashes($safeName) . '"',
+            'Content-Disposition'    => $disposition . '; filename="' . addslashes($safeName) . '"; filename*=UTF-8\'\'' . rawurlencode($safeName),
             'X-Content-Type-Options' => 'nosniff',
             'X-Frame-Options'        => 'SAMEORIGIN',
             'Cache-Control'          => 'private, max-age=3600',

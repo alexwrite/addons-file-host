@@ -23,10 +23,6 @@ class FileHostServiceProvider extends BaseAddonServiceProvider
 
     public function register()
     {
-        $this->app->singleton('file-host', function ($app) {
-            return $this;
-        });
-
         if ($this->app->bound(\Illuminate\Contracts\Http\Kernel::class) && !app()->bound('file_host_middleware_registered')) {
             $this->app->make(\Illuminate\Contracts\Http\Kernel::class)
                 ->prependMiddleware(\App\Addons\FileHost\Http\Middleware\FileHostMaintenanceBypass::class);
@@ -37,22 +33,9 @@ class FileHostServiceProvider extends BaseAddonServiceProvider
 
     public function boot()
     {
-        $langPath = __DIR__ . '/../lang';
-        $viewsPath = __DIR__ . '/../views';
-        $migrationsPath = __DIR__ . '/../database/migrations';
-
-        if (is_dir($langPath)) {
-            $this->loadTranslationsFrom($langPath, 'file-host');
-        }
-
-        if (is_dir($viewsPath)) {
-            $this->loadViewsFrom($viewsPath, 'file-host');
-            $this->loadViewsFrom($viewsPath . '/admin', 'file-host_admin');
-        }
-
-        if (is_dir($migrationsPath)) {
-            $this->loadMigrationsFrom($migrationsPath);
-        }
+        $this->loadTranslations();
+        $this->loadViews();
+        $this->loadMigrations();
 
         if (\Illuminate\Support\Facades\File::exists($this->addonPath('routes/admin.php'))) {
             \Illuminate\Support\Facades\Route::middleware(['web', 'admin'])

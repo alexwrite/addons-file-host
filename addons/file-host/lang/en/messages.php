@@ -16,7 +16,7 @@ return [
     'private_hosting' => 'Hosted privately on your server.',
     'url_config' => 'URL Configuration',
     'url_change_warning_title' => 'Link address change',
-    'url_change_warning_text' => 'After clicking "Save", refresh the page for the new links to take effect. Old links will no longer work.',
+    'url_change_warning_text' => 'After clicking "Save", refresh the page for the new links to take effect. Old links will no longer work. If you are using route caching, run "php artisan route:cache" to apply the change.',
     'url_prefix' => 'URL Prefix',
     'save' => 'Save',
     'file' => 'File',

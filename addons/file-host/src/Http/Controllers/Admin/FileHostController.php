@@ -120,6 +120,12 @@ class FileHostController extends Controller
         $newUuid = trim($newUuid, '/');
 
         if (!empty($newUuid)) {
+            $ext = strtolower(pathinfo($newUuid, PATHINFO_EXTENSION));
+            if (in_array($ext, FileHost::BLOCKED_EXTENSIONS, true)) {
+                return redirect()->route('admin.file-host.index')
+                    ->with('error', __('file-host::messages.error_extension', ['ext' => $ext]));
+            }
+
             $file->uuid = $newUuid;
             $file->save();
         }
