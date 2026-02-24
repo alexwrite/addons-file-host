@@ -1,5 +1,16 @@
 <?php
 
+/*
+ * FileHost Addon for ClientXCMS V2
+ * Author: Corentin WebSite
+ * Year: 2026
+ * License: Open Source
+ *
+ * Disclaimer: La maintenance de fonctionnement est assurée par Corentin WebSite.
+ * En cas de modification du code par un tiers, l'auteur décline toute responsabilité
+ * si le logiciel ne fonctionne plus correctement.
+ */
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -26,4 +37,3 @@ return new class extends Migration
         Schema::dropIfExists('file_hosts');
     }
 };
-

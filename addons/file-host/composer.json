@@ -1,9 +1,9 @@
 {
     "name": "clientxcms/file-host",
-    "description": "Module d'hébergement de fichiers pour ClientXCMS.",
+    "description": "Module d'hébergement de fichiers pour ClientXCMS V2.",
     "type": "clientxcms-addon",
-    "license": "Proprietary",
-    "version": "1.1.0",
+    "license": "Open Source",
+    "version": "1.1",
     "authors": [
         {
             "name": "Corentin WebSite",

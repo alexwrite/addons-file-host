@@ -1,26 +1,24 @@
 <?php
 
 /*
- * FileHost Addon for ClientXCMS NextGen
+ * FileHost Addon for ClientXCMS V2
  * Author: Corentin WebSite
  * Year: 2026
- * License: Proprietary
+ * License: Open Source
+ *
+ * Disclaimer: La maintenance de fonctionnement est assurée par Corentin WebSite.
+ * En cas de modification du code par un tiers, l'auteur décline toute responsabilité
+ * si le logiciel ne fonctionne plus correctement.
  */
 
 use App\Addons\FileHost\Http\Controllers\FileHostPublicController;
 use Illuminate\Support\Facades\Route;
 
-// Lire le préfixe depuis le service de configuration standard de ClientXCMS
 $prefix = setting('file_host_prefix', 'drive');
-if (empty($prefix)) {
-    $prefix = 'drive';
-}
 
 Route::get('/' . $prefix . '/{uuid}', [FileHostPublicController::class, 'download'])
-
     ->name('file-host.download')
-    ->where('uuid', '[a-zA-Z0-9\/\.\-_]+') // Restriction pour éviter les caractères spéciaux dangereux
+    ->where('uuid', '[a-zA-Z0-9\/\.\-_]+')
     ->withoutMiddleware([
-        // Permet l'accès même si le mode maintenance est activé via Blade/Laravel
         \Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance::class,
     ]);

@@ -1,20 +1,21 @@
 <?php
 
 /*
- * FileHost Addon for ClientXCMS NextGen
+ * FileHost Addon for ClientXCMS V2
  * Author: Corentin WebSite
  * Year: 2026
- * License: Proprietary
+ * License: Open Source
+ *
+ * Disclaimer: La maintenance de fonctionnement est assurée par Corentin WebSite.
+ * En cas de modification du code par un tiers, l'auteur décline toute responsabilité
+ * si le logiciel ne fonctionne plus correctement.
  */
 
 namespace App\Addons\FileHost;
 
-use App\Addons\FileHost\Http\Middleware\FileHostMaintenanceBypass;
 use App\Extensions\BaseAddonServiceProvider;
 use App\Models\Admin\Permission;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Route;
 
 class FileHostServiceProvider extends BaseAddonServiceProvider
 {
@@ -26,11 +27,9 @@ class FileHostServiceProvider extends BaseAddonServiceProvider
             return $this;
         });
 
-        // Enregistrer le middleware GLOBALEMENT en haut de la pile.
-        // C'est l'unique moyen de bypasser le mode maintenance de Laravel sans toucher au .htaccess.
         if ($this->app->bound(\Illuminate\Contracts\Http\Kernel::class) && !app()->bound('file_host_middleware_registered')) {
             $this->app->make(\Illuminate\Contracts\Http\Kernel::class)
-                ->prependMiddleware(FileHostMaintenanceBypass::class);
+                ->prependMiddleware(\App\Addons\FileHost\Http\Middleware\FileHostMaintenanceBypass::class);
             
             app()->instance('file_host_middleware_registered', true);
         }
@@ -38,36 +37,33 @@ class FileHostServiceProvider extends BaseAddonServiceProvider
 
     public function boot()
     {
-        $viewsPath      = __DIR__ . '/../views';
-        $langPath       = __DIR__ . '/../lang';
+        $langPath = __DIR__ . '/../lang';
+        $viewsPath = __DIR__ . '/../views';
         $migrationsPath = __DIR__ . '/../database/migrations';
-        $adminRoutesPath = __DIR__ . '/../routes/admin.php';
-        $webRoutesPath  = __DIR__ . '/../routes/web.php';
-
-        $this->loadViewsFrom($viewsPath, 'file-host');
 
         if (is_dir($langPath)) {
             $this->loadTranslationsFrom($langPath, 'file-host');
+        }
+
+        if (is_dir($viewsPath)) {
+            $this->loadViewsFrom($viewsPath, 'file-host');
+            $this->loadViewsFrom($viewsPath . '/admin', 'file-host_admin');
         }
 
         if (is_dir($migrationsPath)) {
             $this->loadMigrationsFrom($migrationsPath);
         }
 
-        if (File::exists($adminRoutesPath)) {
-            Route::middleware(['web', 'admin'])
+        if (\Illuminate\Support\Facades\File::exists($this->addonPath('routes/admin.php'))) {
+            \Illuminate\Support\Facades\Route::middleware(['web', 'admin'])
                 ->prefix(admin_prefix())
                 ->name('admin.')
-                ->group(function () use ($adminRoutesPath) {
-                    require $adminRoutesPath;
-                });
+                ->group($this->addonPath('routes/admin.php'));
         }
 
-        if (File::exists($webRoutesPath)) {
-            Route::middleware(['web'])
-                ->group(function () use ($webRoutesPath) {
-                    require $webRoutesPath;
-                });
+        if (\Illuminate\Support\Facades\File::exists($this->addonPath('routes/web.php'))) {
+            \Illuminate\Support\Facades\Route::middleware(['web'])
+                ->group($this->addonPath('routes/web.php'));
         }
 
         $this->registerSettingsItems();
@@ -81,8 +77,8 @@ class FileHostServiceProvider extends BaseAddonServiceProvider
             if (!app()->bound('corentin_website_card_registered')) {
                 $settings->addCard(
                     'corentin-website',
-                    'Corentin WebSite Addons',
-                    'Gérer les extensions et automatisations Corentin WebSite.',
+                    'file-host::messages.menu_card',
+                    'file-host::messages.menu_card_desc',
                     55
                 );
                 app()->instance('corentin_website_card_registered', true);
@@ -91,13 +87,12 @@ class FileHostServiceProvider extends BaseAddonServiceProvider
             $settings->addCardItem(
                 'corentin-website',
                 'file-host',
-                'Hébergement de Fichiers',
-                'Gérer vos fichiers hébergés (Images, PDF...)',
+                'file-host::messages.title',
+                'file-host::messages.subtitle',
                 'bi bi-folder2-open',
                 [\App\Addons\FileHost\Http\Controllers\Admin\FileHostController::class, 'index'],
                 Permission::MANAGE_EXTENSIONS
             );
-
         } catch (\Exception $e) {
             Log::error("FileHost: Erreur menu: {$e->getMessage()}");
         }

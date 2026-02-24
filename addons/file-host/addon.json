@@ -1,14 +1,14 @@
 {
     "name": "Host Drive",
-    "description": "Module d'hébergement de fichiers (images, pdf, etc.) pour ClientXCMS.",
+    "description": "Module d'hébergement de fichiers (images, pdf, etc.) pour ClientXCMS V2.",
     "uuid": "file-host",
-    "version": "1.1.0",
+    "version": "1.1",
     "author": {
         "name": "Corentin WebSite",
         "email": "hello@corentin.site"
     },
     "year": "2026",
-    "license": "Proprietary",
+    "license": "Open Source",
     "providers": [
         "App\\Addons\\FileHost\\FileHostServiceProvider"
     ]

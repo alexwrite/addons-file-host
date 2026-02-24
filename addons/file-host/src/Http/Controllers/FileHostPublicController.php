@@ -1,10 +1,14 @@
 <?php
 
 /*
- * FileHost Addon for ClientXCMS NextGen
+ * FileHost Addon for ClientXCMS V2
  * Author: Corentin WebSite
  * Year: 2026
- * License: Proprietary
+ * License: Open Source
+ *
+ * Disclaimer: La maintenance de fonctionnement est assurée par Corentin WebSite.
+ * En cas de modification du code par un tiers, l'auteur décline toute responsabilité
+ * si le logiciel ne fonctionne plus correctement.
  */
 
 namespace App\Addons\FileHost\Http\Controllers;
@@ -15,11 +19,6 @@ use Illuminate\Support\Facades\Storage;
 
 class FileHostPublicController extends Controller
 {
-    /**
-     * Cette méthode sert de point d'entrée pour les routes. 
-     * Note: Le middleware FileHostMaintenanceBypass s'occupe normalement
-     * d'intercepter la requête pour bypasser le mode maintenance.
-     */
     public function download($uuid)
     {
         $uuid = str_replace("\0", '', $uuid);
@@ -55,7 +54,7 @@ class FileHostPublicController extends Controller
 
         return response()->file($realPath, [
             'Content-Type'           => $mimeType,
-            'Content-Disposition'    => $disposition . '; filename="' . $safeName . '"',
+            'Content-Disposition'    => $disposition . '; filename="' . addslashes($safeName) . '"',
             'X-Content-Type-Options' => 'nosniff',
             'X-Frame-Options'        => 'SAMEORIGIN',
             'Cache-Control'          => 'private, max-age=3600',

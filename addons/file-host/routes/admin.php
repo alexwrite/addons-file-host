@@ -1,5 +1,16 @@
 <?php
 
+/*
+ * FileHost Addon for ClientXCMS V2
+ * Author: Corentin WebSite
+ * Year: 2026
+ * License: Open Source
+ *
+ * Disclaimer: La maintenance de fonctionnement est assurée par Corentin WebSite.
+ * En cas de modification du code par un tiers, l'auteur décline toute responsabilité
+ * si le logiciel ne fonctionne plus correctement.
+ */
+
 use App\Addons\FileHost\Http\Controllers\Admin\FileHostController;
 use Illuminate\Support\Facades\Route;
 

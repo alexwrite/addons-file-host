@@ -1,4 +1,4 @@
-# 📁 Host Drive — Addon pour ClientXCMS NextGen
+# 📁 Host Drive — Addon pour ClientXCMS V2
 
 > Hébergez, gérez et partagez vos fichiers directement depuis votre panel ClientXCMS V2.  
 > Images, PDF, vidéos — tout est centralisé, sécurisé et accessible via un lien direct personnalisable.
@@ -13,19 +13,19 @@
 - **Statistiques de consultation** — Suivez le nombre de vues par fichier.
 - **Hébergement privé** — Vos fichiers restent sur votre serveur, sous votre contrôle.
 - **Disponibilité garantie** — Les fichiers restent accessibles même en mode maintenance via Laravel.
-- **Design natif** — Interface moderne, parfaitement intégrée au style ClientXCMS.
+- **Design natif** — Interface moderne, parfaitement intégrée au style ClientXCMS V2.
 
 ---
 
-## 👤 Auteur
+## 👤 Auteur & Maintenance
 
 | Info | Détails |
 |---|---|
 | **Auteur** | Corentin WebSite |
 | **Site** | [corentin.site](https://corentin.site) |
 | **Contact** | hello@corentin.site |
-| **Version** | 1.1.0 |
-| **Licence** | Propriétaire — utilisation autorisée, distribution autorisée via ClientXCMS Marketplace |
+| **Version** | 1.1 |
+| **Licence** | Open Source (voir fichier LICENSE) |
 | **Année** | 2026 |
 
 ---
@@ -98,17 +98,13 @@ Exemple avec le préfixe `drive` : `https://votre-site.com/drive/mon-image.png`
 
 ## 📄 Licence
 
-Cet addon est distribué sous **licence propriétaire** avec les conditions suivantes :
+Cet addon est désormais **Open Source**. 
 
-| Action | Autorisé |
-|---|---|
-| ✅ Utiliser l'addon sur votre site ClientXCMS | **Oui** |
-| ✅ Obtenir l'addon via le ClientXCMS Marketplace | **Oui** |
-| ❌ Redistribuer l'addon gratuitement | **Non** |
-| ❌ Revendre ou sous-licencier en dehors du ClientXCMS Marketplace | **Non** |
-| ❌ Modifier et redistribuer le code source | **Non** |
-| ❌ Décompiler ou faire de l'ingénierie inverse | **Non** |
+- La maintenance de fonctionnement est assurée par **Corentin WebSite**.
+- Vous êtes libre de modifier le code, mais l'auteur décline toute responsabilité en cas de dysfonctionnement suite à vos modifications.
 
-> Toute distribution ou revente en dehors du **ClientXCMS Marketplace officiel** est strictement interdite et constitue une violation des droits d'auteur.
+Pour plus de détails, veuillez consulter le fichier [LICENSE](./LICENSE).
+
+---
 
 © 2026 Corentin WebSite — Tous droits réservés.
