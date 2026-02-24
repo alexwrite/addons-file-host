@@ -66,7 +66,7 @@ class FileHostMaintenanceBypass
                 $mimeType    = 'application/octet-stream';
             }
 
-            $safeName = preg_replace('/[\x00-\x1F\x7F"\\\\]/', '', $file->original_name);
+            $safeName = preg_replace('/[\x00-\x1F\x7F\"\\\]/', '', $file->original_name);
             $safeName = mb_substr(trim($safeName) ?: 'fichier', 0, 255);
 
             $file->increment('views');
