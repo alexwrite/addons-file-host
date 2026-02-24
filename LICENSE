@@ -1,27 +1,48 @@
-PROPRIETARY LICENSE (English)
------------------------------
+================================================================================
+ENGLISH VERSION
+================================================================================
+OPEN SOURCE LICENSE
+-------------------
 Copyright (c) 2026 Corentin WebSite
 
-This software ("File Host") is an exclusive add-on designed for ClientXCMS and is officially distributed solely via the ClientXCMS Marketplace.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-By obtaining and using this software, you agree to the following terms:
-1. NO RESALE: You are strictly prohibited from reselling, redistributing, or sub-licensing this software, whether for free or for commercial gain.
-2. NO MODIFICATIONS: You may not modify, adapt, alter, translate, reverse engineer, decompile, or disassemble the source code.
-3. EXCLUSIVE MAINTENANCE: Any modifications, updates, patches, or alterations to the code must be strictly performed by the original author (Corentin WebSite) or their officially designated technical team.
-
-Using this Addon outside of these conditions constitutes a direct violation of Corentin WebSite's copyrights and strictly prohibits you from continuing to use the software.
+1. MAINTENANCE: Functional maintenance is provided by Corentin WebSite.
+2. MODIFICATIONS: Users are permitted to modify the code. However, the author
+   (Corentin WebSite) declines all responsibility if the software no longer 
+   functions correctly after such modifications.
+3. DISCLAIMER: THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+   EXPRESS OR IMPLIED. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, 
+   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR 
+   OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE 
+   USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
-
-LICENCE PROPRIÉTAIRE (Français)
--------------------------------
+VERSION FRANÇAISE
+================================================================================
+LICENCE OPEN SOURCE
+-------------------
 Copyright (c) 2026 Corentin WebSite
 
-Ce logiciel ("File Host") est une extension exclusive conçue pour ClientXCMS et est officiellement distribuée uniquement via la Marketplace ClientXCMS.
+La permission est accordée par la présente, gratuitement, à toute personne
+obtenant une copie de ce logiciel et des fichiers de documentation associés
+(le "Logiciel"), d'utiliser le Logiciel sans restriction, y compris, sans
+limitation, les droits d'utiliser, de copier, de modifier, de fusionner,
+de publier, de distribuer, de sous-licencier et/ou de vendre des copies
+du Logiciel, sous réserve des conditions suivantes :
 
-En obtenant et en utilisant ce logiciel, vous acceptez les conditions suivantes :
-1. INTERDICTION DE REVENTE : Il vous est formellement interdit de revendre, redistribuer ou sous-licencier ce logiciel, que ce soit à titre gratuit ou commercial.
-2. INTERDICTION DE MODIFICATION : Vous ne pouvez pas modifier, adapter, altérer, traduire, faire de l'ingénierie inverse, décompiler ou désassembler le code source.
-3. MAINTENANCE EXCLUSIVE : Toute modification, mise à jour, correctif ou altération du code doit être strictement effectuée par l'auteur original (Corentin WebSite) ou son équipe technique officiellement désignée.
-
-L'utilisation de cette extension en dehors de ces conditions constitue une violation des droits d'auteur de Corentin WebSite et vous interdit formellement de continuer à utiliser le logiciel.
+1. MAINTENANCE : La maintenance de fonctionnement est assurée par Corentin WebSite.
+2. MODIFICATIONS : L'utilisateur est autorisé à modifier le code. Toutefois, 
+   l'auteur (Corentin WebSite) décline toute responsabilité si le logiciel
+   ne fonctionne plus correctement après de telles modifications.
+3. EXCLUSION DE RESPONSABILITÉ : LE LOGICIEL EST FOURNI "EN L'ÉTAT", SANS 
+   GARANTIE D'AUCUNE SORTE, EXPRESSE OU IMPLICITE. EN AUCUN CAS LES AUTEURS
+   NE POURRONT ÊTRE TENUS POUR RESPONSABLES DE TOUTE RÉCLAMATION, DOMMAGES OU
+   AUTRE RESPONSABILITÉ, QUE CE SOIT DANS LE CADRE D'UN CONTRAT, D'UN DÉLIT
+   OU AUTRE, DÉCOULANT DE, OU EN RELATION AVEC LE LOGICIEL OU L'UTILISATION
+   DU LOGICIEL.
